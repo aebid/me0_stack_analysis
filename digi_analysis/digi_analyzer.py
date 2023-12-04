@@ -10,12 +10,14 @@ from scipy.stats import norm
 
 
 #Folder to put the plots in
-#plot_prefix = "plots/run386/"
-plot_prefix = "plots/run388/"
+plot_prefix = "plots/run386/"
+#plot_prefix = "plots/run388/"
+#plot_prefix = "plots/run395/"
 
 #Input file name
-#fname = "../me0_multibx_digi_run386.root"
-fname = "../me0_multibx_digi_run388.root"
+fname = "../me0_multibx_digi_run386.root"
+#fname = "../me0_multibx_digi_run388.root"
+#fname = "../me0_multibx_digi_run395.root"
 
 #New data format 28Nov23
 #orbitNumber     = 45905
@@ -49,8 +51,16 @@ events = tree.arrays()
 ch_list = [0,1,2,3]
 eta_list = [1,2,3,4]
 vfat_list = [4,5,6,7,12,13,14,15,20,21,22,23]
-n_strip_bins = int(128*3 / 8) #Number of bins per eta partition
-n_stips_per_bin = 128*3/n_strip_bins
+n_strips_per_bin = 8 #For time res stats you can marge strips into bins
+n_strip_bins = int(128*3 / n_strips_per_bin)
+
+#n_strip_bins = int(128*3 / 8) #Number of bins per eta partition
+#n_strips_per_bin = 128*3/n_strip_bins
+
+#BX window (uses x < bx_max and x > bx_min), affects what is plotted AND what is used in the fit
+#This may need fine tuning for each dataset
+bx_max = 8
+bx_min = 2
 
 for ch_num in ch_list:
     events = ak.with_field(events, events.rawOH[events.digiStripChamber == ch_num], 'OH_ch{}'.format(ch_num))
@@ -88,10 +98,10 @@ for ch_num in ch_list:
     fig_bx_hist_ch, axs_bx_hist_ch = figure_list[ch_num-1]
     #BX 1D Hists
     for i, vfat in enumerate(vfat_list):
-        mask = (events['VFAT_ch{}'.format(ch_num)] == vfat) & (events['digiBX_ch{}'.format(ch_num)] < 7) & (events['digiBX_ch{}'.format(ch_num)] > 1)
+        mask = (events['VFAT_ch{}'.format(ch_num)] == vfat) & (events['digiBX_ch{}'.format(ch_num)] < bx_max) & (events['digiBX_ch{}'.format(ch_num)] > bx_min)
         x = ak.to_numpy(ak.flatten(events['digiBX_ch{}'.format(ch_num)][mask]))
         (mu, sigma) = norm.fit(x)
-        tmp_bx_hist = axs_bx_hist_ch[int(vfat/8), vfat%4].hist(x, bins=(5), range=(1.5,6.5))
+        tmp_bx_hist = axs_bx_hist_ch[int(vfat/8), vfat%4].hist(x, bins=(bx_max - bx_min), range=(bx_min - 0.5, bx_max - 0.5))
         axs_bx_hist_ch[int(vfat/8), vfat%4].set_xlabel("BX")
         axs_bx_hist_ch[int(vfat/8), vfat%4].set_title("Digi BX Ch{} VFAT{}".format(ch_num, vfat))
         axs_bx_hist_ch[int(vfat/8), vfat%4].text(0.5, 0.9, "StdDev: {}".format(round(sigma,3)), fontsize=18, transform=axs_bx_hist_ch[int(vfat/8), vfat%4].transAxes)
@@ -123,7 +133,7 @@ for ch_num in ch_list:
             y = ak.to_numpy(ak.flatten(events['digiStrip_ch{}'.format(ch_num)][mask]))
 
             #Only look at BX less than or equal to 7 and strip within bins in the flat numpy
-            mask = (x < 7) & (x > 1) & (y >= strip_start) & (y <= strip_end)
+            mask = (x < bx_max) & (x > bx_min) & (y >= strip_start) & (y <= strip_end)
             x1 = x[mask]
             y1 = y[mask]
 
@@ -158,7 +168,7 @@ for ch_num in ch_list:
 
 
         y_time_res_err_eta = y_time_res_err[(eta_num-1)*n_strip_bins:(eta_num)*n_strip_bins]
-        tmp_time_res_hist_by_eta = axs_timeres_hist_by_eta[eta_num-1, ch_num].hist(y_time_res_err_eta, bins=20, range=(0.5,1.0))
+        tmp_time_res_hist_by_eta = axs_timeres_hist_by_eta[eta_num-1, ch_num].hist(y_time_res_err_eta, bins=50, range=(0.0,1.0))
         axs_timeres_hist_by_eta[eta_num-1, ch_num].set_xlabel("BX Sigma")
         axs_timeres_hist_by_eta[eta_num-1, ch_num].set_ylabel("Entries")
         axs_timeres_hist_by_eta[eta_num-1, ch_num].set_title("Time Resolution Ch{} Eta{}".format(ch_num, eta_num))
@@ -170,17 +180,18 @@ for ch_num in ch_list:
 
 
     tmp_time_res = axs_timeres[ch_num].errorbar(x_time_res, y_time_res, yerr=y_time_res_err)
-    axs_timeres[ch_num].set_xlabel("Strip Bin (x{})".format(n_stips_per_bin))
+    axs_timeres[ch_num].set_xlabel("Strip Bin (x{})".format(n_strips_per_bin))
     axs_timeres[ch_num].set_ylabel("Mean BX")
     axs_timeres[ch_num].set_title("Time Resolution Ch{}".format(ch_num, eta_num))
-    axs_timeres[ch_num].set_ylim(1,5)
+    axs_timeres[ch_num].set_ylim(bx_min,bx_max)
 
-    tmp_time_res_hist = axs_timeres_hist[ch_num].hist(y_time_res_err, bins=50, range=(0.5,1.0))
+    tmp_time_res_hist = axs_timeres_hist[ch_num].hist(y_time_res_err, bins=50, range=(0.0,1.0))
     axs_timeres_hist[ch_num].set_xlabel("BX Sigma")
     axs_timeres_hist[ch_num].set_ylabel("Entries")
     axs_timeres_hist[ch_num].set_title("Time Resolution Ch{}".format(ch_num, eta_num))
     y_time_res_err_nonan = y_time_res_err[~np.isnan(y_time_res_err)]
-    fig_mean = round(norm.fit(y_time_res_err_nonan)[0],3)
+    y_time_res_err_filter = y_time_res_err_nonan[~(y_time_res_err_nonan == 0)]
+    fig_mean = round(norm.fit(y_time_res_err_filter)[0],3)
     fig_timeres_hist.text(0.8, 0.25*((3-ch_num)+1)-0.05, "Mean: {}".format(fig_mean), fontsize=24)
     #axs_timeres_hist[ch_num].set_xlim(0,1.5)
 
