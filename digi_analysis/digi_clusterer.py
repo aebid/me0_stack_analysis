@@ -8,10 +8,20 @@ from scipy.stats import norm
 import ROOT
 from array import array
 
-plot_prefix = "plots/run386/"
+plot_prefix = "plots/run416/"
 
 fname = "../me0_multibx_digi_run386.root"
+fname = "../me0_multibx_digi_run400.root"
+fname = "../me0_multibx_digi_run401.root"
+#fname = "../me0_multibx_digi_run403.root"
+fname = "../me0_multibx_digi_run416.root"
+
 outname = "../awk_cluster_run386.root"
+outname = "../awk_cluster_run400.root"
+outname = "../awk_cluster_run401.root"
+#outname = "../awk_cluster_run403.root"
+outname = "../awk_cluster_run416_test.root"
+
 
 #Data looks like
 #orbitNumber     = 15754
@@ -174,6 +184,9 @@ clusterBX_second = ak.fill_none(clusterBX_second, fill_none_value)
 #clusterBX_second = ak.pad_none(ak.sort(clusterBXs, axis=2), 2, axis=2)[:,:,1]
 clusterBX_avg = ak.fill_none(ak.mean(clusterBXs, axis=2), fill_none_value)
 
+clusterBX_center = ak.flatten(clusterBXs[clusterStrips == ak.fill_none(ak.values_astype(ak.mean(clusterStrips, axis=2), "int64"), fill_none_value)], axis=2)
+
+
 clusterChamber = ak.fill_none(ak.mean(clusterChambers, axis=2), fill_none_value)
 clusterEta = ak.fill_none(ak.mean(clusterEtas, axis=2), fill_none_value)
 
@@ -187,4 +200,5 @@ out_file["clusterTree"] = {
         "clusterBX_second": clusterBX_second,
         "clusterBX_last": clusterBX_max,
         "clusterBX_avg": clusterBX_avg,
+        "clusterBX_center": clusterBX_center,
     }
